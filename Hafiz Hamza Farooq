@@ -1,0 +1,143 @@
+#include <iostream>
+#include <vector>
+#include <queue>
+#include <climits>
+#include <fstream>
+#include <chrono>
+
+using namespace std;
+using namespace std::chrono;
+
+// Edge structure
+struct Edge {
+    int src, dest, weight;
+};
+
+// Graph structure
+class Graph {
+public:
+    int V, E;
+    vector<vector<pair<int, int>>> adjList; // adjacency list for Dijkstra
+    vector<Edge> edges; // edge list for Bellman-Ford
+
+    Graph(int V, int E) {
+        this->V = V;
+        this->E = E;
+        adjList.resize(V);
+    }
+
+    void addEdge(int u, int v, int w) {
+        adjList[u].push_back({v, w});
+        edges.push_back({u, v, w});
+    }
+};
+
+// Dijkstra's Algorithm
+vector<int> dijkstra(Graph& graph, int src) {
+    vector<int> dist(graph.V, INT_MAX);
+    priority_queue<pair<int, int>, vector<pair<int, int>>, greater<pair<int, int>>> pq;
+    dist[src] = 0;
+    pq.push({0, src});
+
+    while (!pq.empty()) {
+        int u = pq.top().second;
+        pq.pop();
+
+        for (auto& neighbor : graph.adjList[u]) {
+            int v = neighbor.first;
+            int weight = neighbor.second;
+
+            if (dist[u] != INT_MAX && dist[u] + weight < dist[v]) {
+                dist[v] = dist[u] + weight;
+                pq.push({dist[v], v});
+            }
+        }
+    }
+
+    return dist;
+}
+
+// Bellman-Ford Algorithm
+vector<int> bellmanFord(Graph& graph, int src) {
+    vector<int> dist(graph.V, INT_MAX);
+    dist[src] = 0;
+
+    for (int i = 1; i < graph.V; ++i) {
+        for (auto& edge : graph.edges) {
+            int u = edge.src;
+            int v = edge.dest;
+            int weight = edge.weight;
+
+            if (dist[u] != INT_MAX && dist[u] + weight < dist[v]) {
+                dist[v] = dist[u] + weight;
+            }
+        }
+    }
+
+    for (auto& edge : graph.edges) {
+        int u = edge.src;
+        int v = edge.dest;
+        int weight = edge.weight;
+
+        if (dist[u] != INT_MAX && dist[u] + weight < dist[v]) {
+            cout << "Graph contains negative weight cycle\n";
+            return {};
+        }
+    }
+
+    return dist;
+}
+
+// Read graph from file
+Graph readGraphFromFile(const string& filename) {
+    ifstream file(filename);
+    int V, E;
+    file >> V >> E;
+    Graph graph(V, E);
+
+    int u, v, w;
+    while (file >> u >> v >> w) {
+        graph.addEdge(u, v, w);
+    }
+
+    file.close();
+    return graph;
+}
+
+// Utility function to print distances
+void printDistances(const vector<int>& dist) {
+    for (int i = 0; i < dist.size(); ++i) {
+        if (dist[i] == INT_MAX) {
+            cout << "INF ";
+        } else {
+            cout << dist[i] << " ";
+        }
+    }
+    cout << endl;
+}
+
+int main() {
+    string filename = "graph.txt";
+    Graph graph = readGraphFromFile(filename);
+
+    int src = 0; // source node
+
+    // Measure and compare execution times
+    auto start = high_resolution_clock::now();
+    vector<int> distDijkstra = dijkstra(graph, src);
+    auto end = high_resolution_clock::now();
+    auto duration = duration_cast<milliseconds>(end - start);
+    cout << "Dijkstra's Algorithm: ";
+    printDistances(distDijkstra);
+    cout << "Time taken by Dijkstra: " << duration.count() << " milliseconds" << endl;
+
+    start = high_resolution_clock::now();
+    vector<int> distBellmanFord = bellmanFord(graph, src);
+    end = high_resolution_clock::now();
+    duration = duration_cast<milliseconds>(end - start);
+    cout << "Bellman-Ford Algorithm: ";
+    printDistances(distBellmanFord);
+    cout << "Time taken by Bellman-Ford: " << duration.count() << " milliseconds" << endl;
+
+    return 0;
+}
